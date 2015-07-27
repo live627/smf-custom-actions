@@ -155,7 +155,7 @@ function CustomActionList()
 						global $txt;
 
 						return $rowData[\'enabled\'] ? $txt[\'yes\'] : $txt[\'no\'];'),
-					'class' => 'windowbg',
+					//'class' => 'windowbg',
 					'style' => 'width: 8%; text-align: center;',
 				),
 				'sort' => array(
@@ -174,7 +174,7 @@ function CustomActionList()
 							'id_action' => false,
 						),
 					),
-					'class' => 'windowbg',
+					//'class' => 'windowbg',
 					'style' => 'width: 15%; text-align: center;',
 				),
 			),
@@ -226,7 +226,10 @@ function list_getCustomActions($start, $items_per_page, $sort, $parent)
 			)
 		);
 	while ($row = $smcFunc['db_fetch_assoc']($request))
+	{
+		$row['name'] = ca_text($row['url'], $row['name'], true); //Use language string if available.
 		$list[] = $row;
+	}
 	$smcFunc['db_free_result']($request);
 
 	return $list;
@@ -311,13 +314,13 @@ function CustomActionEdit()
 		$enabled = !empty($_POST['enabled']) ? 1 : 0;
 
 		// What about the type?
-		if (in_array($_POST['type'], array(0, 1, 2)))
+		if (in_array($_POST['type'], $context['id_parent'] ? array(0, 1, 2, 3) : array(0, 1, 2)))
 			$type = $_POST['type'];
 		else
 			$type = 0;
 
 		// A menu button?
-		$menu = !empty($_POST['menu']) && !$context['id_parent'] ? 1 : 0;
+		$menu = !empty($_POST['menu']) ? 1 : 0;
 
 		// Clean the body and headers.
 		$header = $_POST['header'];
@@ -522,31 +525,53 @@ function CustomActionEdit()
 
 function recacheCustomActions()
 {
-	global $smcFunc, $db_prefix, $context, $user_info;
+	global $smcFunc, $db_prefix, $context, $user_info, $modSettings;
 
 	// Get all the action names.
 	$request = $smcFunc['db_query']('', '
-		SELECT id_action, name, url, permissions_mode, menu
+		SELECT id_action, id_parent, name, url, permissions_mode, menu
 		FROM {db_prefix}custom_actions
-		WHERE id_parent = 0
-			AND enabled = 1',
+		WHERE (id_parent = 0 OR menu != 0)
+			AND enabled = 1
+		ORDER BY id_parent DESC, id_action ASC',
 		array(
 		)
 	);
 
 	$cache = array();
 	$menu_cache = array();
+	$who_cache = array();
+	$subactions = array();
 	while ($row = $smcFunc['db_fetch_assoc']($request))
 	{
-		$cache[] = $row['url'];
-
-		// On the menu?
-		if ($row['menu'])
-			$menu_cache[] = array(
+		if ($row['id_parent'] != 0)
+		{
+			$subactions[$row['id_parent']][] = array(
 				0 => $row['url'],
 				1 => $row['name'],
-				2 => $row['permissions_mode'] == 1 ? 'ca_' . $row['id_action'] : false,
+				2 => $row['permissions_mode'] == 2 ? ('ca_' . $row['id_parent']) : ($row['permissions_mode'] == 1 ? 'ca_' . $row['id_action'] : false),
 			);
+		} 
+		else
+		{
+			$cache[] = $row['url'];
+			$who_cache[$row['url']] = array($row['name'], ($row['permissions_mode'] == 1 ? 'ca_' . $row['id_action'] : false));
+			if (isset($subactions[$row['id_action']]))
+			{
+				foreach ($subactions[$row['id_action']] as $sub)
+				{	if (!empty($sub[0]))
+						$who_cache[$row['url'] . '_' . $sub[0]] = array($sub[1], $sub[2]);
+				}
+			}
+			// On the menu?
+			if ($row['menu'])
+				$menu_cache[] = array(
+					0 => $row['url'],
+					1 => $row['name'],
+					2 => $row['permissions_mode'] == 1 ? 'ca_' . $row['id_action'] : false,
+					3 => isset($subactions[$row['id_action']]) ? $subactions[$row['id_action']] : array(),
+				);
+		}
 	}
 
 	$smcFunc['db_free_result']($request);
@@ -554,219 +579,111 @@ function recacheCustomActions()
 	updateSettings(array(
 		'ca_cache' => implode(';', $cache),
 		'ca_menu_cache' => serialize($menu_cache),
+		'ca_who_cache' => serialize($who_cache),
 	), true);
 
 	// Try to at least clear the cache for them.
 	cache_put_data('menu_buttons-' . implode('_', $user_info['groups']) . '-' . $user_info['language'], null);
+	if (isset($modSettings['sp_version'])) //Using Simple Portal?
+		cache_put_data('menu_buttons-' . implode('_', $user_info['groups']) . '-' . $user_info['language'] . '-' . empty($context['disable_sp']), null);
 }
 ]]></add>
 		</operation>
-
 	</file>
 
-
 	<file name="$sourcedir/Admin.php">
-
   	<operation>
 			<search position="after"><![CDATA['profile' => array($txt['custom_profile_shorttitle'], 'enabled' => in_array('cp', $context['admin_features'])),]]></search>
 			<add><![CDATA['action' => array($txt['custom_action_shorttitle'], 'admin_forum'),
 						]]></add>
 		</operation>
-
 	</file>
 
-	<file name="$languagedir/Modifications.english.php">
-
-		<operation>
-			<search position="end"></search>
-			<add><![CDATA[
-$txt['custom_action_shorttitle'] = 'Custom Actions';
-$txt['core_settings_item_ca'] = 'Custom Actions';
-$txt['core_settings_item_ca_desc'] = 'With custom actions you can create custom pages wrapped in your forum\'s theme.';
-$txt['custom_action_desc'] = 'From this page you can create and modify your own custom pages.';
-$txt['custom_action_title'] = 'Custom Actions';
-$txt['custom_action_title_sub'] = 'Sub-Actions For "%1$s"';
-$txt['custom_action_none'] = 'You have not created any custom actions yet!';
-$txt['custom_action_none_sub'] = 'You have not created any sub-actions for the "%1$s" action yet!';
-$txt['custom_action_name'] = 'Action Name';
-$txt['custom_action_type'] = 'Type';
-$txt['custom_action_type_0'] = 'HTML';
-$txt['custom_action_type_1'] = 'BBC';
-$txt['custom_action_type_2'] = 'PHP';
-$txt['custom_action_sub_actions'] = 'Sub-Actions';
-$txt['custom_action_enabled'] = 'Enabled';
-$txt['custom_action_make_new'] = 'New Action';
-$txt['custom_action_make_new_sub'] = 'New Sub-Action';
-$txt['custom_action_not_found'] = 'The requested action was not found.';
-$txt['custom_action_invalid_url'] = 'Action URLs may only contain letters, numbers and underscores.';
-$txt['custom_action_settings'] = 'Action Settings:';
-$txt['custom_action_url_desc'] = 'This may only contain letters, numbers and underscores.';
-$txt['custom_action_permissions_mode'] = 'Permissions Mode';
-$txt['custom_action_permissions_mode_0'] = 'Visible To Everyone';
-$txt['custom_action_permissions_mode_1'] = 'Visible To Selected Groups';
-$txt['custom_action_permissions_mode_2'] = 'Same As Parent Action';
-$txt['custom_action_body'] = 'Body';
-$txt['custom_action_body_html'] = 'HTML Body';
-$txt['custom_action_body_php'] = 'Template Code';
-$txt['custom_action_delete_sure'] = 'Are you sure you want to delete this action?';
-$txt['custom_action_header'] = 'HTML Headers';
-$txt['custom_action_source'] = 'Source File Code';
-$txt['custom_action_source_desc'] = 'This code will be evaluated before any templates are displayed. If you don\'t understand this you should just put all your code in the template code box. No output should be displayed here.';
-$txt['custom_action_header_desc'] = 'This code will be displayed in the header section.';
-$txt['custom_action_body_html_desc'] = 'This code will be displayed in the body section.';
-$txt['custom_action_body_php_desc'] = 'You should display all output here.';
-$txt['custom_action_body_desc'] = 'This is the body of your custom page.';
-$txt['custom_action_url'] = 'Action URL';
-$txt['custom_action_settings_code'] = 'Action Code:';
-$txt['custom_action_menu'] = 'Show Menu Button';
-]]></add>
-		</operation>
-
-	</file>
-<file name="$languagedir/Modifications.german.php" error="skip">
-
-		<operation>
-			<search position="end"></search>
-			<add><![CDATA[
-$txt['custom_action_shorttitle'] = 'Custom Actions';
-$txt['core_settings_item_ca'] = 'Custom Actions';
-$txt['core_settings_item_ca_desc'] = 'Mit Custom Actions kannst du Custom Pages erzeugen die eingebunden in deim Theme angezeigt werden.';
-$txt['custom_action_desc'] = 'Auf dieser Seite kannst du deine Custom Pages erstellen und editieren.';
-$txt['custom_action_title'] = 'Custom Actions';
-$txt['custom_action_title_sub'] = 'Sub-Actions f&uuml;r "%1$s"';
-$txt['custom_action_none'] = 'Zur Zeit sind keine Custom Actions vorhanden!';
-$txt['custom_action_none_sub'] = 'Zur Zeit sind keine Sub-Actions f&uuml;r die "%1$s" Action vorhanden!';
-$txt['custom_action_name'] = 'Action Name';
-$txt['custom_action_type'] = 'Typ';
-$txt['custom_action_type_0'] = 'HTML';
-$txt['custom_action_type_1'] = 'BBC';
-$txt['custom_action_type_2'] = 'PHP';
-$txt['custom_action_sub_actions'] = 'Sub-Actions';
-$txt['custom_action_enabled'] = 'Aktiviert';
-$txt['custom_action_make_new'] = 'Neue Action';
-$txt['custom_action_make_new_sub'] = 'Neue Sub-Action';
-$txt['custom_action_not_found'] = 'Die angeforderte Action ist nicht vorhanden.';
-$txt['custom_action_invalid_url'] = 'Action URLs d&uuml;rfen nur Buchstaben, Nummern und Unterstriche enthalten.';
-$txt['custom_action_settings'] = 'Action Einstellungen:';
-$txt['custom_action_url_desc'] = 'Dies darf nur Buchstaben, Nummern und Unterstriche enthalten.';
-$txt['custom_action_permissions_mode'] = 'Permissions Mode';
-$txt['custom_action_permissions_mode_0'] = 'Sichtbar f&uuml;r jeden';
-$txt['custom_action_permissions_mode_1'] = 'Sichtbar f&uuml;r die gew&auml;hlten Gruppen';
-$txt['custom_action_permissions_mode_2'] = 'Gleiche wie die &uuml;bergeordnete Action';
-$txt['custom_action_body'] = 'Body';
-$txt['custom_action_body_html'] = 'HTML Body';
-$txt['custom_action_body_php'] = 'Template Code';
-$txt['custom_action_delete_sure'] = 'Sind sie sicher diese Action zu l&ouml;schen?';
-$txt['custom_action_header'] = 'HTML Headers';
-$txt['custom_action_source'] = 'Quelldatei Code';
-$txt['custom_action_source_desc'] = 'Dieser Code wird vor dem Anzeigen des Template ausgewertet. Solltest du das nicht verstehen, verwende nur die Template Code Box. Hier soll kein Anzeigecode vorhanden sein.';
-$txt['custom_action_header_desc'] = 'Dieser Code wird in der Kopfzeile angezeigt.';
-$txt['custom_action_body_html_desc'] = 'Dieser Code wird im Body angezeigt..';
-$txt['custom_action_body_php_desc'] = 'Du solltest die gesammte Ausgabe hier sehen.';
-$txt['custom_action_body_desc'] = 'Dies ist der Body f&uuml;r deine Custom Page.';
-$txt['custom_action_url'] = 'Action URL';
-$txt['custom_action_settings_code'] = 'Action Code:';
-$txt['custom_action_menu'] = 'Zeige Men&uuml;button';
-]]></add>
-		</operation>
-
-	</file>
-
-	<file name="$languagedir/Modifications.german-utf8.php" error="skip">
-
-		<operation>
-			<search position="end"></search>
-			<add><![CDATA[
-$txt['custom_action_shorttitle'] = 'Custom Actions';	
-$txt['core_settings_item_ca'] = 'Custom Actions';
-$txt['core_settings_item_ca_desc'] = 'Mit Custom Actions kannst du Custom Pages erzeugen die eingebunden in deim Theme angezeigt werden.';
-$txt['custom_action_desc'] = 'Auf dieser Seite kannst du deine Custom Pages erstellen und editieren.';
-$txt['custom_action_title'] = 'Custom Actions';
-$txt['custom_action_title_sub'] = 'Sub-Actions für "%1$s"';
-$txt['custom_action_none'] = 'Zur Zeit sind keine Custom Actions vorhanden!';
-$txt['custom_action_none_sub'] = 'Zur Zeit sind keine Sub-Actions für die "%1$s" Action vorhanden!';
-$txt['custom_action_name'] = 'Action Name';
-$txt['custom_action_type'] = 'Typ';
-$txt['custom_action_type_0'] = 'HTML';
-$txt['custom_action_type_1'] = 'BBC';
-$txt['custom_action_type_2'] = 'PHP';
-$txt['custom_action_sub_actions'] = 'Sub-Actions';
-$txt['custom_action_enabled'] = 'aktiviert';
-$txt['custom_action_make_new'] = 'Neue Action';
-$txt['custom_action_make_new_sub'] = 'Neue Sub-Action';
-$txt['custom_action_not_found'] = 'Die angeforderte Action ist nicht vorhanden.';
-$txt['custom_action_invalid_url'] = 'Action URLs dürfen nur Buchstaben, Nummern und Unterstriche enthalten.';
-$txt['custom_action_settings'] = 'Action Einstellungen:';
-$txt['custom_action_url_desc'] = 'Dies darf nur Buchstaben, Nummern und Unterstriche enthalten.';
-$txt['custom_action_permissions_mode'] = 'Permissions Mode';
-$txt['custom_action_permissions_mode_0'] = 'Sichtbar für jeden';
-$txt['custom_action_permissions_mode_1'] = 'Sichtbar für die gewählten Gruppen';
-$txt['custom_action_permissions_mode_2'] = 'Gleiche wie die Eltern Action';
-$txt['custom_action_body'] = 'Body';
-$txt['custom_action_body_html'] = 'HTML Body';
-$txt['custom_action_body_php'] = 'Template Code';
-$txt['custom_action_delete_sure'] = 'Sind sie sicher diese Action zu löschen?';
-$txt['custom_action_header'] = 'HTML Headers';
-$txt['custom_action_source'] = 'Quelldatei Code';
-$txt['custom_action_source_desc'] = 'Dieser Code wird vor dem Anzeigen des Template ausgewertet. Solltest du das nicht verstehen, verwende nur die Template Code Box. Hier soll kein Anzeigecode vorhanden sein.';
-$txt['custom_action_header_desc'] = 'Dieser Code wird in der Kopfzeile angezeigt.';
-$txt['custom_action_body_html_desc'] = 'Dieser Code wird im Body angezeigt..';
-$txt['custom_action_body_php_desc'] = 'Du solltest die gesammte Ausgabe hier sehen.';
-$txt['custom_action_body_desc'] = 'Dies ist der Body für deine Custom Page.';
-$txt['custom_action_url'] = 'Action URL';
-$txt['custom_action_settings_code'] = 'Action Code:';
-$txt['custom_action_menu'] = 'Zeige Menübutton';
-]]></add>
-		</operation>
-
-	</file>
-	
 	<file name="$sourcedir/Subs.php">
-
 		<operation>
-			<search position="replace"><![CDATA[		// Now we put the buttons in the context so the theme can use them.
-]]></search>
+			<search position="end" />
 			<add><![CDATA[
-		// Any custom action buttons?
-		$ca_buttons = unserialize($modSettings['ca_menu_cache']);
-		foreach ($ca_buttons as $button)
-		{
-			$buttons[$button[0]] = array(
-				'title' => $button[1],
-				'href' => $scripturl . '?action=' . $button[0],
-				'show' => $button[2] ? allowedTo($button[2]) : true,
-				'sub_buttons' => array(
-				),
-				'is_last' => true,
-			);
-		}
-
-		// Now we put the buttons in the context so the theme can use them.
-]]></add>
-		</operation>
-
-	</file>
-
-	<file name="$boarddir/index.php">
-
-		<operation>
-			<search position="replace"><![CDATA[
-	// Get the function and file to include - if it's not there, do the board index.
-]]></search>
-			<add><![CDATA[
-	// Add custom actions to the array.
+/**
+ * Called by integration hook integrate_actions.
+ *
+ * Adds all enabled custom actions to the action array.
+ */
+function ca_integrate_actions(&$actionArray)
+{
+	global $modSettings;
 	$custom_actions = explode(';', $modSettings['ca_cache']);
 	foreach ($custom_actions as $custom_action)
 		$actionArray[$custom_action] = array('CustomAction.php', 'ViewCustomAction');
+}
 
-	// Get the function and file to include - if it's not there, do the board index.
+/**
+ * Called by integration hook integrate_menu_buttons.
+ *
+ * Adds the menu buttons for all enabled custom actions to the button array.
+ */
+function ca_integrate_menu_buttons(&$buttons)
+{
+	global $modSettings, $scripturl;
+	$ca_menu_cache = unserialize($modSettings['ca_menu_cache']);
+	$ca_buttons = array();
+	foreach ($ca_menu_cache as $button)
+	{
+		$sub_buttons = array();
+		foreach ($button[3] as $sub_button)
+		{
+			$sub_buttons[] = array(
+				'title' => ca_text($sub_button[0], $sub_button[1]),
+				'href' => $scripturl . '?action=' . $button[0] . ($sub_button[0] ? ';sa=' . $sub_button[0] : ''),
+				'show' => $sub_button[2] ? allowedTo($sub_button[2]) : true,
+				'sub_buttons' => array(),
+				'is_last' => true,
+			);
+		}
+		$ca_buttons[$button[0]] = array(
+			'title' => ca_text($button[0], $button[1]),
+			'href' => $scripturl . '?action=' . $button[0],
+			'show' => $button[2] ? allowedTo($button[2]) : true,
+			'sub_buttons' => $sub_buttons,
+			'is_last' => true,
+		);
+	}
+	$tmp = array_splice ($buttons, 0, array_search('login', array_keys($buttons)));
+	$buttons = array_merge ($tmp, $ca_buttons, $buttons); 
+}
+
+/**
+ * Return the, possibly localized, name of a custom action.
+ * 
+ * If the name parameter starts with $txt['key'] followed by an optional default text an attempt is made to find a language string using key 'key'.
+ * If the key is empty, (name starts with $txt[]), an attempt is made to find a language string using the url parameter prefixed with 'ca_menu_' as key.
+ * If both key and url are empty no attempt to find a language string is made.
+ * If no language string is found a default text is returned.
+ * If a default text follows $txt[],($txt['key']This is the default), that default text is returned.
+ * If no default is supplied then the key, with any inital 'ca_menu_' prefix removed and the first character in upper case, is returned.
+ * If no default is supplied and the key is empty then the url, with the first character in upper case, is returned.
+ * If also the url is empty the name parameter is returned unchanged.
+ */
+function ca_text($url, $name, $show_original = false)
+{
+	global $txt;
+	$pattern = "/^\\\$txt\['?([^'\]]*)'?\](.*)/"; //$txt['key']Default. Quotes, key and default are all optional.
+	if (preg_match($pattern, $name, $matches))
+	{
+		$original = $show_original ? ' (' . $name . ')' : ''; //Only used in the admin page.
+		$key = (!empty($matches[1]) ? $matches[1] : (!empty($url) ? 'ca_menu_' . $url : ''));
+		if (!empty($key) && isset($txt[$key])) //Language string found.
+			return $txt[$key] . $original;
+		$default = (!empty($matches[2]) ? $matches[2] : ucfirst(preg_replace('/^ca_menu_/', '', $key, 1)));
+		if (!empty($default)) //Would only be empty if both default and url are empty.
+			return $default . $original;
+	}
+	return $name; //Just return the literal name.
+}
 ]]></add>
 		</operation>
-
 	</file>
 
 	<file name="$themedir/Admin.template.php">
-
 		<operation>
 			<search position="end"></search>
 			<add><![CDATA[
@@ -777,22 +694,67 @@ function template_show_custom_action()
 
 function template_edit_custom_action()
 {
-	global $context, $txt, $scripturl;
+	global $context, $txt, $scripturl, $settings;
 
 	echo '
-	<script language="JavaScript" type="text/javascript"><!-- // --><![CDATA[
+	<script type="text/javascript" src="' . $settings['default_theme_url'] . '/scripts/ca_codemirror-min.js"></script>
+	<link rel="stylesheet" type="text/css" href="' . $settings['default_theme_url'] . '/css/ca_codemirror.css">
+	<script type="text/javascript"><!-- // --><![CDATA[
+		var cm_head, cm_body;
+		function createCm(ta, type)
+		{
+			var cm = CodeMirror.fromTextArea(document.getElementById(ta), {
+				mode: (type == 2 ? "text/x-php" : "htmlmixed"),
+				indentUnit: 4,
+				matchBrackets: true,
+				extraKeys: {
+					"Ctrl-I": function(cm) {
+						cm.indentSelection("add");
+					},
+					"Ctrl-J": function(cm) {
+						cm.indentSelection("smart");
+					},
+					"Ctrl-U": function(cm) {
+						cm.indentSelection("subtract");
+					},
+					"F11": function(cm) {
+						cm.setOption("fullScreen", !cm.getOption("fullScreen"));
+					},
+					"Esc": function(cm) {
+						if (cm.getOption("fullScreen"))	cm.setOption("fullScreen", false);
+					}
+				}
+			});
+			return cm;
+		}
 		function updateInputBoxes()
 		{
 			permission_mode = document.getElementById("permissions_mode").value;
 			type = document.getElementById("type").value;
-
+			
 			document.getElementById("inline_permissions").style.display = permission_mode == 1 ? "" : "none";
-			document.getElementById("header_box").style.display = type != 1 ? "" : "none";
+			document.getElementById("header_box").style.display = (type != 1 && type != 3) ? "" : "none";
+			document.getElementById("body_box").style.display = type != 3 ? "" : "none";
 			document.getElementById("header_text").style.display = type == 0 ? "" : "none";
 			document.getElementById("source_text").style.display = type == 2 ? "" : "none";
 			document.getElementById("html_body_text").style.display = type == 0 ? "" : "none";
 			document.getElementById("body_text").style.display = type == 1 ? "" : "none";
 			document.getElementById("php_body_text").style.display = type == 2 ? "" : "none";
+
+			if (cm_head) {
+				if (type == 0 || type == 2) {
+					cm_head.setOption( "mode", type == 2 ? "text/x-php" : "htmlmixed");
+					cm_body.setOption( "mode", type == 2 ? "text/x-php" : "htmlmixed");
+				} else {
+					cm_head.toTextArea();
+					cm_body.toTextArea();
+					cm_head = null;
+					cm_body = null;
+				}
+			} else if (type == 0 || type == 2) {
+				cm_head = createCm("ta_header", type);
+				cm_body = createCm("ta_body", type);
+			}
 		}
 	// ]', ']></script>';
 
@@ -826,7 +788,8 @@ function template_edit_custom_action()
 					<select name="type" id="type" onchange="updateInputBoxes();">
 						<option value="0" ', $context['action']['type'] == 0 ? 'selected="selected"' : '', '>', $txt['custom_action_type_0'], '</option>
 						<option value="1" ', $context['action']['type'] == 1 ? 'selected="selected"' : '', '>', $txt['custom_action_type_1'], '</option>
-						<option value="2" ', $context['action']['type'] == 2 ? 'selected="selected"' : '', '>', $txt['custom_action_type_2'], '</option>
+						<option value="2" ', $context['action']['type'] == 2 ? 'selected="selected"' : '', '>', $txt['custom_action_type_2'], '</option>', $context['id_parent'] ? '
+						<option value="3" ' . ($context['action']['type'] == 3 ? 'selected="selected"' : '') . '>' . $txt['custom_action_type_3'] . '</option>' : '', '
 					</select>
 				</td>
 			</tr><tr class="windowbg2">
@@ -843,14 +806,14 @@ function template_edit_custom_action()
 						', theme_inline_permissions('ca_' . ($context['id_action'] ? $context['id_action'] : 'temp')), '
 					</div>
 				</td>
-			</tr>', !$context['id_parent'] ? '<tr class="windowbg2">
+			</tr>', '<tr class="windowbg2">
 				<td width="50%">
 					<b>' . $txt['custom_action_menu'] . ':</b>
 				</td>
 				<td width="50%">
 					<input type="checkbox" name="menu" ' . ($context['action']['menu'] ? 'checked="checked"' : '') . ' class="check" />
 				</td>
-			</tr>' : '', '<tr class="windowbg2">
+			</tr>', '<tr class="windowbg2">
 				<td width="50%">
 					<b>', $txt['custom_action_enabled'], ':</b>
 				</td>
@@ -869,9 +832,9 @@ function template_edit_custom_action()
 					<div class="smalltext">', $txt['custom_action_source_desc'], '</div>
 				</td>
 				<td width="50%">
-					<textarea name="header" rows="10" cols="60">', $context['action']['header'], '</textarea>
+					<textarea id="ta_header" name="header" rows="10" cols="60">', htmlspecialchars($context['action']['header']), '</textarea>
 				</td>
-			</tr><tr class="windowbg2" valign="top">
+			</tr><tr class="windowbg2" valign="top" id="body_box">
 				<td width="50%" id="body_text">
 					<b>', $txt['custom_action_body'], ':</b>
 					<div class="smalltext">', $txt['custom_action_body_desc'], '</div>
@@ -885,7 +848,7 @@ function template_edit_custom_action()
 					<div class="smalltext">', $txt['custom_action_body_php_desc'], '</div>
 				</td>
 				<td width="50%">
-					<textarea name="body" rows="20" cols="60">', $context['action']['body'], '</textarea>
+					<textarea id="ta_body" name="body" rows="20" cols="60">', htmlspecialchars($context['action']['body']), '</textarea>
 				</td>
 			</tr><tr class="titlebg">
 				<td colspan="4" align="center">
@@ -905,13 +868,48 @@ function template_edit_custom_action()
 
 	// Get the javascript bits right!
 	echo '
-	<script language="JavaScript" type="text/javascript"><!-- // --><![CDATA[
+	<script type="text/javascript"><!-- // --><![CDATA[
 		updateInputBoxes();
 	// ]', ']></script>';
 }
 ]]></add>
 		</operation>
-
 	</file>
 
+		<file name="$sourcedir/Who.php">
+		<operation>
+			<search position="end" />
+			<add><![CDATA[
+/**
+ * Called by integration hook integrate_whos_online.
+ *
+ * Returns the text to use in Who's Online when someone is executing a custom action.
+ * If there exists a language string for this action,(whoall_, whoadmin_ or whoallow_), return false to use that string.
+ * If the user viewing Who's online lacks permission to perform the action then $txt['who_hidden'] is returned.
+ * Otherwise return the, possibly localized, name of the custom action.
+*/
+function ca_integrate_who($actions)
+{
+	global $txt, $modSettings, $sourcedir;
+	$key = $actions['action'] . (isset($actions['sa']) ? '_' . $actions['sa'] : '');
+	if (isset($txt['whoall_' . $key]) || isset($txt['whoadmin_' . $key]) || isset($txt['whoallow_' . $key]))
+		return false;
+	$ca_who = unserialize($modSettings['ca_who_cache']);
+	if (isset($ca_who[$key]))
+	{
+		list($name, $perm) = $ca_who[$key];
+		if ($perm && !allowedTo($perm))
+			return $txt['who_hidden'];
+		else
+		{
+			require_once($sourcedir . '/Subs.php');
+			return ca_text((isset($actions['sa']) ? $actions['sa'] : $actions['action']), $name);
+		}
+	}
+	else
+		return false;
+}
+]]></add>
+		</operation>
+	</file>
 </modification>

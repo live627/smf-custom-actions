@@ -25,6 +25,7 @@ if(!$user_info['is_admin'])
 
 // Okay, get down to business.
 db_extend('packages');
+
 if (!isset($modSettings['ca_enabled']))
 {
 	// For some reason updateSettings() refuses to set unset settings to an empty string.
@@ -35,6 +36,15 @@ if (!isset($modSettings['ca_enabled']))
 		'ca_enabled' => 1,
 		'ca_cache' => '',
 		'ca_menu_cache' => serialize(array()),
+		'ca_who_cache' => serialize(array()),
+	));
+}
+
+//In case of upgrade.
+else if (!isset($modSettings['ca_who_cache']))
+{
+	updateSettings(array(
+		'ca_who_cache' => serialize(array()),
 	));
 }
 
@@ -115,11 +125,13 @@ $indexes = array(
 		'columns' => array('id_action'),
 	),
 	array(
-		'type' => 'index',
-		'columns' => array('url'),
+		'type' => 'unique',
+		'columns' => array('url', 'id_parent', 'enabled'),
 	),
 );
 
 $smcFunc['db_create_table']('{db_prefix}custom_actions', $columns, $indexes, array(), 'update_remove');
-
+//In case of upgrade.
+if($smcFunc['db_remove_index']('{db_prefix}custom_actions', 'url'))
+	$smcFunc['db_add_index']('{db_prefix}custom_actions', $indexes[1]);
 ?>

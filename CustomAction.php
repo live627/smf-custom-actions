@@ -10,14 +10,15 @@ if (!defined('SMF'))
 
 function ViewCustomAction()
 {
-	global $context, $smcFunc, $db_prefix, $txt;
-
+	global $context, $smcFunc, $db_prefix, $txt, $sourcedir, $scripturl;
+	require_once($sourcedir . '/Subs.php');
 	// So which custom action is this?
 	$request = $smcFunc['db_query']('', '
 		SELECT id_action, name, permissions_mode, action_type, header, body
 		FROM {db_prefix}custom_actions
 		WHERE url = {string:url}
-			AND enabled = 1',
+			AND enabled = 1
+			AND id_parent = 0',
 		array(
 			'url' => $context['current_action'],
 		)
@@ -26,7 +27,12 @@ function ViewCustomAction()
 	$context['action'] = $smcFunc['db_fetch_assoc']($request);
 
 	$smcFunc['db_free_result']($request);
-
+	
+	$context['linktree'][] = array(
+		'url' => $scripturl . '?action=' . $context['current_action'],
+		'name' => ca_text($context['current_action'], $context['action']['name']),
+	);
+	
 	// By any chance are we in a sub-action?
 	if (!empty($_REQUEST['sa']))
 	{
@@ -55,9 +61,11 @@ function ViewCustomAction()
 				$context['action']['id_action'] = $sub['id_action'];
 				$context['action']['permissions_mode'] = $sub['permissions_mode'];
 			}
-			$context['action']['action_type'] = $sub['action_type'];
-			$context['action']['header'] = $sub['header'];
-			$context['action']['body'] = $sub['body'];
+			if($sub['action_type'] != 3) {
+				$context['action']['action_type'] = $sub['action_type'];
+				$context['action']['header'] = $sub['header'];
+				$context['action']['body'] = $sub['body'];
+			}
 		}
 	}
 
@@ -70,7 +78,14 @@ function ViewCustomAction()
 	}
 
 	// Do this first to allow it to be overwritten by PHP source file code.
-	$context['page_title'] = $context['action']['name'];
+	$context['page_title'] = ca_text((!empty($_REQUEST['sa']) ? $_REQUEST['sa'] : $context['current_action']), $context['action']['name']);
+	if (!empty($_REQUEST['sa']))
+	{
+		$context['linktree'][] = array(
+			'url' => $scripturl . '?action=' . $context['current_action'] . ';sa=' . $_REQUEST['sa'],
+			'name' => $context['page_title'],
+		);
+	}
 
 	switch ($context['action']['action_type'])
 	{

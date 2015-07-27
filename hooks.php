@@ -1,5 +1,4 @@
 <?php
-
 global $smcFunc, $user_info, $boardurl;
 
 if (file_exists(dirname(__FILE__) . '/SSI.php') && !defined('SMF'))
@@ -23,25 +22,9 @@ if(!$user_info['is_admin'])
 	}
 }
 
-// Okay, get down to business.
-db_extend('packages');
-
-// Delete our settings.
-$smcFunc['db_query']('', '
-	DELETE FROM {db_prefix}settings
-	WHERE variable IN ({array_string:ca_settings})',
-	array(
-		'ca_settings' => array('ca_enabled', 'ca_cache', 'ca_menu_cache', 'ca_who_cache'),
-	)
-);
-
-// Any extra permissions?
-$smcFunc['db_query']('', '
-	DELETE FROM {db_prefix}permissions
-	WHERE SUBSTRING(permission, 1, 3) = {string:ca_prefix}',
-	array(
-		'ca_prefix' => 'ca_',
-	)
-);
-
+// Add or delete hooks
+$call = empty($context['uninstalling']) ? 'add_integration_function' : 'remove_integration_function';
+$hooks = array('integrate_actions' => 'ca_integrate_actions', 'integrate_whos_online' => 'ca_integrate_who', 'integrate_menu_buttons' => 'ca_integrate_menu_buttons');
+foreach ($hooks as $hook => $function)
+	$call($hook, $function);
 ?>
