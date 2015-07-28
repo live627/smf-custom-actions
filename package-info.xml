@@ -11,6 +11,7 @@
 		<code>hooks.php</code>
 		<require-file name="ca_codemirror.css" destination="$themedir/css" />
 		<require-file name="ca_codemirror-min.js" destination="$themedir/scripts" />
+		<require-file name="Subs-CustomAction.php" destination="$sourcedir" />
 		<require-file name="CustomAction.php" destination="$sourcedir" />
 		<require-file name="CustomAction.template.php" destination="$themedir" />
 		<modification type="file">modification.xml</modification>
@@ -23,6 +24,7 @@
 		<code>hooks.php</code>
 		<remove-file name="$themedir/css/ca_codemirror.css" />
 		<remove-file name="$themedir/scripts/ca_codemirror-min.js" />
+		<remove-file name="$sourcedir/Subs-CustomAction.php" />
 		<remove-file name="$sourcedir/CustomAction.php" />
 		<remove-file name="$themedir/CustomAction.template.php" />
 		<modification type="file" reverse="true">modification.xml</modification>
