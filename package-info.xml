@@ -5,7 +5,7 @@
 	<name>Custom Action Mod</name>
 	<type>modification</type>
 	<version>3.2</version>
-	<install for="2.0.1 - 2.0.9">
+	<install for="2.0 - 2.0.99">
 		<readme type="file">license.txt</readme>
 		<database>install.php</database>
 		<code>hooks.php</code>
@@ -17,19 +17,7 @@
 		<modification type="file">lang.xml</modification>
 		<modification type="file">lang-utf8.xml</modification>
 	</install>
-	<install>
-		<readme type="inline" parsebbc="true">[color=red]Warning! This mod has not been tested on your version of SMF. Do not proceed if you get errors![/color]</readme>
-		<database>install.php</database>
-		<code>hooks.php</code>
-		<require-file name="ca_codemirror.css" destination="$themedir/css" />
-		<require-file name="ca_codemirror-min.js" destination="$themedir/scripts" />
-		<require-file name="CustomAction.php" destination="$sourcedir" />
-		<require-file name="CustomAction.template.php" destination="$themedir" />
-		<modification type="file">modification.xml</modification>
-		<modification type="file">lang.xml</modification>
-		<modification type="file">lang-utf8.xml</modification>
-	</install>
-	<uninstall>
+	<uninstall for="2.0 - 2.0.99">
 		<readme type="inline">This will uninstall the Custom Action Mod.</readme>
 		<database>uninstall.php</database>
 		<code>hooks.php</code>
@@ -41,7 +29,7 @@
 		<modification type="file" reverse="true">lang.xml</modification>
 		<modification type="file" reverse="true">lang-utf8.xml</modification>
 	</uninstall>
-	<upgrade>
+	<upgrade for="2.0 - 2.0.99">
 		<readme type="inline">Sorry, but there is no upgrade package from your version. Please uninstall the previous version, and install this version. You won't lose any data.</readme>
 	</upgrade>
 </package-info>
