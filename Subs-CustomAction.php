@@ -25,7 +25,6 @@ function ca_integrate_who($actions)
 			return $txt['who_hidden'];
 		else
 		{
-			require_once($sourcedir . '/Subs.php');
 			return ca_text((isset($actions['sa']) ? $actions['sa'] : $actions['action']), $name);
 		}
 	}
@@ -41,8 +40,7 @@ function ca_integrate_who($actions)
 function ca_integrate_actions(&$actionArray)
 {
 	global $modSettings;
-	$custom_actions = explode(';', $modSettings['ca_cache']);
-	foreach ($custom_actions as $custom_action)
+	foreach (explode(';', $modSettings['ca_cache']) as $custom_action)
 		$actionArray[$custom_action] = array('CustomAction.php', 'ViewCustomAction');
 }
 
