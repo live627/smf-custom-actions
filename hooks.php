@@ -1,4 +1,5 @@
 <?php
+
 global $smcFunc, $user_info, $boardurl;
 
 if (file_exists(dirname(__FILE__) . '/SSI.php') && !defined('SMF'))
@@ -27,4 +28,3 @@ $call = empty($context['uninstalling']) ? 'add_integration_function' : 'remove_i
 $hooks = array('integrate_actions' => 'ca_integrate_actions', 'integrate_whos_online' => 'ca_integrate_who', 'integrate_menu_buttons' => 'ca_integrate_menu_buttons');
 foreach ($hooks as $hook => $function)
 	$call($hook, $function);
-?>
