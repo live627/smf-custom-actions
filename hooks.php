@@ -7,13 +7,13 @@ if (file_exists(dirname(__FILE__) . '/SSI.php') && !defined('SMF'))
 elseif (!defined('SMF'))
 	die('<b>Error:</b> Cannot uninstall - please verify you put this in the same place as SMF\'s Settings.php.');
 
-// If you uninstall manually, you have to be logged in!
+// If you do this manually, you have to be logged in!
 if(!$user_info['is_admin'])
 {
 	if($user_info['is_guest'])
 	{
 		echo $txt['admin_login'] . ':<br />';
-		ssi_login($boardurl . '/uninstall.php');
+		ssi_login($boardurl . '/hooks.php');
 		die();
 	}
 	else
