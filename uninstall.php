@@ -23,9 +23,6 @@ if(!$user_info['is_admin'])
 	}
 }
 
-// Okay, get down to business.
-db_extend('packages');
-
 // Delete our settings.
 $smcFunc['db_query']('', '
 	DELETE FROM {db_prefix}settings
@@ -43,5 +40,3 @@ $smcFunc['db_query']('', '
 		'ca_prefix' => 'ca_',
 	)
 );
-
-?>
