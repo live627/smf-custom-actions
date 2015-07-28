@@ -15,6 +15,7 @@
 		<require-file name="ManageCustomAction.php" destination="$sourcedir" />
 		<require-file name="CustomAction.php" destination="$sourcedir" />
 		<require-file name="CustomAction.template.php" destination="$themedir" />
+		<require-file name="ManageCustomAction.template.php" destination="$themedir" />
 		<modification type="file">modification.xml</modification>
 		<modification type="file">lang.xml</modification>
 		<modification type="file">lang-utf8.xml</modification>
@@ -29,6 +30,7 @@
 		<remove-file name="$sourcedir/ManageCustomAction.php" />
 		<remove-file name="$sourcedir/CustomAction.php" />
 		<remove-file name="$themedir/CustomAction.template.php" />
+		<remove-file name="$themedir/ManageCustomAction.template.php" />
 		<modification type="file" reverse="true">modification.xml</modification>
 		<modification type="file" reverse="true">lang.xml</modification>
 		<modification type="file" reverse="true">lang-utf8.xml</modification>
@@ -37,3 +39,4 @@
 		<readme type="inline">Sorry, but there is no upgrade package from your version. Please uninstall the previous version, and install this version. You won't lose any data.</readme>
 	</upgrade>
 </package-info>
+z
