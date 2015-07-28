@@ -40,8 +40,8 @@ if (!isset($modSettings['ca_enabled']))
 	));
 }
 
-//In case of upgrade.
-else if (!isset($modSettings['ca_who_cache']))
+// In case of upgrade.
+elseif (!isset($modSettings['ca_who_cache']))
 {
 	updateSettings(array(
 		'ca_who_cache' => serialize(array()),
@@ -131,7 +131,7 @@ $indexes = array(
 );
 
 $smcFunc['db_create_table']('{db_prefix}custom_actions', $columns, $indexes, array(), 'update_remove');
+
 //In case of upgrade.
 if($smcFunc['db_remove_index']('{db_prefix}custom_actions', 'url'))
 	$smcFunc['db_add_index']('{db_prefix}custom_actions', $indexes[1]);
-?>
