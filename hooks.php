@@ -25,6 +25,11 @@ if(!$user_info['is_admin'])
 
 // Add or delete hooks
 $call = empty($context['uninstalling']) ? 'add_integration_function' : 'remove_integration_function';
-$hooks = array('integrate_actions' => 'ca_integrate_actions', 'integrate_whos_online' => 'ca_integrate_who', 'integrate_menu_buttons' => 'ca_integrate_menu_buttons');
+$hooks = array(
+	'integrate_pre_include' => 'Subs-CustomAction.php',
+	'integrate_actions' => 'ca_integrate_actions',
+	'integrate_whos_online' => 'ca_integrate_who',
+	'integrate_menu_buttons' => 'ca_integrate_menu_buttons'
+);
 foreach ($hooks as $hook => $function)
 	$call($hook, $function);
