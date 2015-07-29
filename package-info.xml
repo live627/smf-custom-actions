@@ -5,10 +5,12 @@
 	<name>Custom Action Mod</name>
 	<type>modification</type>
 	<version>3.2</version>
+
 	<install for="2.0 - 2.0.99">
 		<readme type="file">license.txt</readme>
+        <code>check.php</code>
+        <code>add_remove_hooks.php</code>
 		<database>install.php</database>
-		<code>hooks.php</code>
 		<require-file name="ca_codemirror.css" destination="$themedir/css" />
 		<require-file name="ca_codemirror-min.js" destination="$themedir/scripts" />
 		<require-file name="Subs-CustomAction.php" destination="$sourcedir" />
@@ -17,14 +19,12 @@
 		<require-file name="CustomAction.english.php" destination="$languagedir" />
 		<require-file name="CustomAction.template.php" destination="$themedir" />
 		<require-file name="ManageCustomAction.template.php" destination="$themedir" />
-		<modification type="file">modification.xml</modification>
-		<modification type="file">lang.xml</modification>
-		<modification type="file">lang-utf8.xml</modification>
 	</install>
+
 	<uninstall for="2.0 - 2.0.99">
 		<readme type="inline">This will uninstall the Custom Action Mod.</readme>
 		<database>uninstall.php</database>
-		<code>hooks.php</code>
+		<code>add_remove_hooks.php</code>
 		<remove-file name="$themedir/css/ca_codemirror.css" />
 		<remove-file name="$themedir/scripts/ca_codemirror-min.js" />
 		<remove-file name="$sourcedir/Subs-CustomAction.php" />
@@ -33,10 +33,8 @@
 		<remove-file name="$languagedir/CustomAction.english.php" />
 		<remove-file name="$themedir/CustomAction.template.php" />
 		<remove-file name="$themedir/ManageCustomAction.template.php" />
-		<modification type="file" reverse="true">modification.xml</modification>
-		<modification type="file" reverse="true">lang.xml</modification>
-		<modification type="file" reverse="true">lang-utf8.xml</modification>
 	</uninstall>
+
 	<upgrade for="2.0 - 2.0.99">
 		<readme type="inline">Sorry, but there is no upgrade package from your version. Please uninstall the previous version, and install this version. You won't lose any data.</readme>
 	</upgrade>
